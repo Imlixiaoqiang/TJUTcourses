@@ -51,7 +51,8 @@ def login(username, password):
     ss.post('http://xk.tjut.edu.cn/xsxk/login.xk', headers=headers, params=params)
     return response.json()['message']
 
-def refresh_table(username,password):
+
+def refresh_table(username, password):
     params = {
         'username': f"{username}",
         'password': f'{password}',
@@ -67,26 +68,45 @@ def refresh_table(username,password):
         'data-proxy': 'proxy.xk',
     }
     ss.get('http://xk.tjut.edu.cn/xsxk/xkjs.xk', headers=headers, params=params)
-    r = ss.get('http://xk.tjut.edu.cn/xsxk/qxgxk.xk', headers=headers, verify=False)
-
-    soup = BeautifulSoup(r.text, 'lxml')
     data = []
+    r = ss.get('http://xk.tjut.edu.cn/xsxk/qxgxk.xk', headers=headers, verify=False)
+    soup = BeautifulSoup(r.text, 'lxml')
+
     i = soup.body.find_all('script')
-    for j in range(0, len(i)+1,2):
+    for j in range(0, len(i) + 1, 2):
         try:
             a = i[j].string.split(',')
             c = []
-            c.append(re.findall("'(.*?)'",a[0])[0])
-            c.append(re.findall("'(.*?)'",a[1])[0])
-            c.append(re.findall("'(.*?)'",a[2])[0])
-            c.append(re.findall("'(.*?)'",a[14])[0])
+            c.append(re.findall("'(.*?)'", a[0])[0])
+            c.append(re.findall("'(.*?)'", a[1])[0])
+            c.append(re.findall("'(.*?)'", a[2])[0])
+            c.append(re.findall("'(.*?)'", a[14])[0])
+            c.append('公共选修课')
             data.append(c)
         except:
             pass
+    r = ss.get('http://xk.tjut.edu.cn/xsxk/tykxk.xk', headers=headers, verify=False)
+    soup = BeautifulSoup(r.text, 'lxml')
+    i = soup.body.find_all('script')
+    for j in range(0, len(i) + 1, 2):
+        try:
+            a = i[j].string.split(',')
+            c = []
+            c.append(re.findall("'(.*?)'", a[0])[0])
+            c.append(re.findall("'(.*?)'", a[1])[0])
+            c.append(re.findall("'(.*?)'", a[2])[0])
+            c.append(re.findall("'(.*?)'", a[14])[0])
+            c.append('体育课')
+            data.append(c)
+        except:
+            pass
+
     return data
+
+
 def xjd():
     p = ss.get('http://xk.tjut.edu.cn/xsxk/index.xk', headers=headers, verify=False)
-    z = re.findall('loadXklcs\((.*?)\);',p.text,re.DOTALL)[0]
+    z = re.findall('loadXklcs\((.*?)\);', p.text, re.DOTALL)[0]
     z = z.split(',')
     l = []
     l.append(z[1].strip().strip("'"))
@@ -96,15 +116,19 @@ def xjd():
     l.append(z[7].strip().strip("'"))
     return l
 
+
 def return_ss():
     return ss
+
+
 def check_login():
     try:
-        result = ss.get('http://xk.tjut.edu.cn/xsxk/loadData.xk?method=loginCheck',headers=headers).json()
+        result = ss.get('http://xk.tjut.edu.cn/xsxk/loadData.xk?method=loginCheck', headers=headers).json()
         return result['success']
     except Exception as e:
         return e
 
+
 def user():
-    p = ss.get('http://xk.tjut.edu.cn/xsxk/index.xk', headers=headers,verify=False)
-    return re.findall('<b>(.*?)</b>同学，',p.text)[0]
+    p = ss.get('http://xk.tjut.edu.cn/xsxk/index.xk', headers=headers, verify=False)
+    return re.findall('<b>(.*?)</b>同学，', p.text)[0]
