@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal
 from PyQt5.QtWidgets import *
 from fuction import *
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
 
 
 class WorkerThread(QThread):
@@ -13,6 +13,7 @@ class WorkerThread(QThread):
         self.li = li
         self.username = username
         self.password = password
+
 
     def checkLoginStatus(self):
         self.update_signal.emit(f"{check_login()}")
@@ -26,14 +27,24 @@ class WorkerThread(QThread):
         while True:
             self.checkLoginStatus()
             for l in self.li:
-                params = {
-                    'method': 'handleQxgxk',
-                    'jxbid': l,
-                    'glJxbid': '',
-                    'xkzy': '1'
-                }
-                ss = self.s.get('http://xk.tjut.edu.cn/xsxk/xkOper.xk', headers=headers, params=params).json()
-                self.update_signal.emit(f"{ss['message']}")
+                if l[1] == '公共选修课':
+                    params = {
+                        'method': 'handleQxgxk',
+                        'jxbid': l[0],
+                        'glJxbid': '',
+                        'xkzy': '1'
+                    }
+                    ss = self.s.get('http://xk.tjut.edu.cn/xsxk/xkOper.xk', headers=headers, params=params).json()
+                    self.update_signal.emit(f"{ss['message']}")
+                else:
+                    params = {
+                        'method': 'handleTykxk',
+                        'jxbid': l[0],
+                        'glJxbid': '',
+                        'xkzy': '1'
+                    }
+                    ss = self.s.get('http://xk.tjut.edu.cn/xsxk/xkOper.xk', headers=headers, params=params).json()
+                    self.update_signal.emit(f"{ss['message']}")
 
 
 class Main(QWidget):
@@ -41,7 +52,7 @@ class Main(QWidget):
         super().__init__()
         self.initUI(username, password)
         self.thread = None
-
+        self.setWindowIcon(QIcon("D:/桌面/TJUT选课/1.ico"))
     def initUI(self, username, password):
         self.setWindowTitle('TJUT公选课抢课软件')
 
@@ -66,7 +77,8 @@ class Main(QWidget):
         font1.setPixelSize(30)
         font2.setPixelSize(22)
         # 添加一个标签并设置内容
-        welcome_label = QLabel(f'{user()}欢迎使用本软件，上方为所有公选课，下方为你要抢的课程')
+        welcome_label = QLabel(
+            f'{user()} 欢迎使用本软件，上方为所有公选课和体育课，下方为你要抢的课程，双击即可添加到下方')
         welcome_label.setFont(font2)
 
         j = xjd()
@@ -122,14 +134,14 @@ class Main(QWidget):
 
     def grabClasses(self, username, password):
         try:
-            info_column = 0
-            info_column_data = [self.infoTable.item(row, info_column).text() for row in
+
+            info_column_data = [(self.infoTable.item(row, 0).text(), self.infoTable.item(row, 4).text()) for row in
                                 range(self.infoTable.rowCount())]
             if len(info_column_data) != 0:
                 self.addButton.setText('取消抢课')
                 self.addButton.clicked.disconnect()
                 self.addButton.clicked.connect(lambda: self.stop_grab_classes(username, password))
-                self.outputArea.append(f'你要选的课lid号是{info_column_data}')
+                self.outputArea.append(f'你要选的课是{info_column_data}')
                 self.outputArea.append('开始抢课！')
                 self.timer.stop()
                 self.thread = WorkerThread(info_column_data, username, password)
@@ -157,11 +169,11 @@ class Main(QWidget):
         data = refresh_table(username, password)
         self.mainTable = QTableWidget(self)
         self.mainTable.setRowCount(len(data))
-        self.mainTable.setColumnCount(4)
-        self.mainTable.setHorizontalHeaderLabels(['课程lid码', '课程代码', '课程名称', '老师'])
+        self.mainTable.setColumnCount(5)
+        self.mainTable.setHorizontalHeaderLabels(['课程lid码', '课程代码', '课程名称', '老师', '课程类型'])
 
         for row in range(len(data)):
-            for col in range(4):
+            for col in range(5):
                 item = QTableWidgetItem(data[row][col])
                 item.setFlags(item.flags() ^ 2)  # Make items not editable
                 self.mainTable.setItem(row, col, item)
@@ -177,17 +189,15 @@ class Main(QWidget):
     def createInfoTable(self):
         self.infoTable = QTableWidget(self)
         self.infoTable.setRowCount(0)  # Initialize with 0 rows
-        self.infoTable.setColumnCount(4)
-        self.infoTable.setHorizontalHeaderLabels(['课程lid码', '课程代码', '课程名称', '老师'])
+        self.infoTable.setColumnCount(5)
+        self.infoTable.setHorizontalHeaderLabels(['课程lid码', '课程代码', '课程名称', '老师', '课程类型'])
         self.infoTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
     def createContextMenu(self):
         self.contextMenu = QMenu(self)
         delete_action = QAction("删除课程", self)
         delete_action.triggered.connect(self.deleteFromInfoTable)
-
         self.contextMenu.addAction(delete_action)
-
         self.infoTable.setContextMenuPolicy(3)  # ContextMenuPolicy for right-click
         self.infoTable.customContextMenuRequested.connect(self.showContextMenu)
 
@@ -206,7 +216,7 @@ class Main(QWidget):
             else:
                 self.mainTable.setRowHidden(row, True)
 
-    def addToInfoTable(self, row, col):
+    def addToInfoTable(self, row):
         # 获取选中行的所有项
         selected_items = [self.mainTable.item(row, c) for c in range(self.mainTable.columnCount())]
 
